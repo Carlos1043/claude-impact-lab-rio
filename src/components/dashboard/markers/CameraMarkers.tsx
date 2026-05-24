@@ -4,39 +4,25 @@ import L from "leaflet";
 import { useDashboardStore } from "@/lib/state/dashboard-store";
 import { useCameras } from "@/lib/hooks/useCameras";
 import type { Camera } from "@/lib/schemas";
-import { cameraIcon } from "./icons";
+import { iconFor } from "./icons";
 import { useMarkerLayer } from "./useMarkerLayer";
+import { escapeHtml, tooltipShell } from "./tooltip";
 
-function escapeHtml(value: string): string {
-  return value.replace(/[<>&"']/g, (ch) => {
-    switch (ch) {
-      case "<": return "&lt;";
-      case ">": return "&gt;";
-      case "&": return "&amp;";
-      case '"': return "&quot;";
-      case "'": return "&#39;";
-      default: return ch;
-    }
-  });
-}
-
-function renderCameraTooltip(c: Camera): string {
-  return `<div><strong>${escapeHtml(c.nomeArea)}</strong></div>`;
+function renderTooltip(c: Camera): string {
+  return tooltipShell("camera", `<div><strong>${escapeHtml(c.nomeArea)}</strong></div>`);
 }
 
 export function CameraMarkers(): null {
   const fid = useDashboardStore((s) => s.selectedPolygonFid);
   const { cameras } = useCameras(fid);
+  const icon = iconFor("camera");
 
   useMarkerLayer(
     "camera",
     (group) => {
       cameras?.forEach((c) => {
         group.addLayer(
-          L.marker([c.lat, c.lon], { icon: cameraIcon }).bindTooltip(
-            renderCameraTooltip(c),
-            { sticky: true },
-          ),
+          L.marker([c.lat, c.lon], { icon }).bindTooltip(renderTooltip(c), { sticky: true }),
         );
       });
     },

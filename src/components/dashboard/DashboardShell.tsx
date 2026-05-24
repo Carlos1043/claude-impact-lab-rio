@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { Sidebar } from "./Sidebar";
+import { MapLayerPills } from "./MapLayerPills";
 
 const MapView = dynamic(() => import("./MapView").then((m) => m.MapView), {
   ssr: false,
@@ -26,6 +27,7 @@ export function DashboardShell() {
       <main className="relative flex-1">
         <MapView />
         <MapLayers />
+        <MapLayerPills />
       </main>
     </div>
   );

@@ -1,4 +1,6 @@
 import L from "leaflet";
+import type { LayerKey } from "@/lib/schemas";
+import { LAYER_META } from "./layer-meta";
 
 export function dotIcon(color: string, sizePx = 10): L.DivIcon {
   return L.divIcon({
@@ -9,8 +11,13 @@ export function dotIcon(color: string, sizePx = 10): L.DivIcon {
   });
 }
 
-export const occurrenceIcon = dotIcon("#dc2626");
-export const tipIcon = dotIcon("#ea580c");
-export const cameraIcon = dotIcon("#2563eb", 12);
-export const urbanFactorIcon = dotIcon("#d97706");
-export const homelessCensusIcon = dotIcon("#7c3aed");
+const ICON_CACHE = new Map<LayerKey, L.DivIcon>();
+
+export function iconFor(layerKey: LayerKey): L.DivIcon {
+  const cached = ICON_CACHE.get(layerKey);
+  if (cached) return cached;
+  const meta = LAYER_META[layerKey];
+  const icon = dotIcon(meta.color, meta.iconSize ?? 10);
+  ICON_CACHE.set(layerKey, icon);
+  return icon;
+}

@@ -4,7 +4,6 @@ import { useMemo } from "react";
 import useSWR from "swr";
 import { PolygonListSchema, type Polygon } from "@/lib/schemas/polygon";
 import { useDashboardStore } from "@/lib/state/dashboard-store";
-import { LayerToggles } from "./LayerToggles";
 
 const areaFormatter = new Intl.NumberFormat("pt-BR", {
   maximumFractionDigits: 2,
@@ -98,8 +97,6 @@ export function Sidebar() {
           </ul>
         )}
       </div>
-
-      <LayerToggles />
     </nav>
   );
 }
