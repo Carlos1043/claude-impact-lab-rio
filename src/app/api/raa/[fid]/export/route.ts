@@ -24,7 +24,7 @@ const paramsSchema = z.object({
 });
 
 const querySchema = z.object({
-  source: z.enum(["fixture", "ai"]).optional().default("fixture"),
+  source: z.enum(["db", "fixture", "ai"]).optional().default("db"),
 });
 
 export async function GET(
@@ -54,10 +54,7 @@ export async function GET(
   const { source } = parsedQuery.data;
 
   try {
-    const raa = await generateRaa({
-      polygonFid: fid,
-      useFixture: source === "fixture",
-    });
+    const raa = await generateRaa({ polygonFid: fid, source });
     const buf = await renderRaaToBuffer(raa);
 
     return new NextResponse(new Uint8Array(buf), {

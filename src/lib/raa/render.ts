@@ -1,18 +1,25 @@
 /**
  * Pure deterministic renderer: Raa → .docx Buffer.
  *
- * Mirrors the visual layout of the 8 existing RELINTs:
- * a single-column borderless table with alternating title/body rows.
+ * Byte-faithful to the 8 reference RELINTs (see `db/relint-template.md`).
+ * Specifically matches:
+ *   - A4 page (11906 × 16838 EMU) with 2cm margins (1134 EMU all sides)
+ *   - Arial font everywhere
+ *   - Body at 10pt (sz=20), titles at 11pt (sz=22) bold dark-navy #1b2a4a
+ *   - Single-column table with full borders (sz=4 inside, sz=6 cell)
+ *   - "Bullets" are plain paragraphs with "•" prefix + 360 EMU left indent
+ *     (no real Word numbering — matches the source exactly)
+ *   - Body paragraphs are justified, line spacing 1.15 (276)
  *
- * Tested against `./fixtures/pres-vargas.ts`. See `db/relint-template.md`
- * for the source-of-truth template spec.
+ * Tested against fixtures/pres-vargas.ts. See `db/relint-template.md` for the
+ * source-of-truth template spec.
  */
 
 import {
   AlignmentType,
   BorderStyle,
   Document,
-  HeightRule,
+  LineRuleType,
   Packer,
   Paragraph,
   Table,
@@ -36,104 +43,136 @@ import {
 } from "./template";
 
 // ──────────────────────────────────────────────────────────────────
+// Constants — derived from the reference docx (RI_017)
+// ──────────────────────────────────────────────────────────────────
+
+const FONT = "Arial";
+const TITLE_COLOR = "1b2a4a"; // dark navy used for centered + bold titles
+const SIZE_BODY = 20; // 10pt (half-points)
+const SIZE_TITLE = 22; // 11pt
+
+const SINGLE = (size: number) => ({
+  style: BorderStyle.SINGLE,
+  size,
+  color: "000000",
+});
+
+const FULL_TABLE_BORDERS = {
+  top: SINGLE(4),
+  bottom: SINGLE(4),
+  left: SINGLE(4),
+  right: SINGLE(4),
+  insideHorizontal: SINGLE(4),
+  insideVertical: SINGLE(4),
+};
+
+const FULL_CELL_BORDERS = {
+  top: SINGLE(6),
+  bottom: SINGLE(6),
+  left: SINGLE(6),
+  right: SINGLE(6),
+};
+
+// ──────────────────────────────────────────────────────────────────
 // Building blocks
 // ──────────────────────────────────────────────────────────────────
 
-const NO_BORDERS = {
-  top: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-  bottom: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-  left: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-  right: { style: BorderStyle.NONE, size: 0, color: "FFFFFF" },
-};
+interface RunOpts {
+  bold?: boolean;
+  size?: number;
+  color?: string;
+  allCaps?: boolean;
+}
 
-function bold(text: string, opts: { size?: number; allCaps?: boolean } = {}) {
+function run(text: string, opts: RunOpts = {}): TextRun {
   return new TextRun({
     text: opts.allCaps ? text.toUpperCase() : text,
-    bold: true,
-    size: opts.size ?? 22, // half-points → 11pt default
+    font: FONT,
+    bold: opts.bold,
+    size: opts.size ?? SIZE_BODY,
+    color: opts.color,
   });
 }
 
-function plain(text: string, size = 22) {
-  return new TextRun({ text, size });
-}
-
-/** Centered + bold paragraph — used for title rows. */
-function titleParagraph(text: string, size = 24) {
+/**
+ * Centered + bold title paragraph (dark navy). Matches the centered title
+ * rows of the reference RELINT.
+ */
+function titleParagraph(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.CENTER,
-    children: [bold(text, { size })],
-    spacing: { after: 80 },
+    spacing: { after: 60, line: 276, lineRule: LineRuleType.AUTO },
+    children: [run(text, { bold: true, size: SIZE_TITLE, color: TITLE_COLOR })],
   });
 }
 
-/** Left-aligned bold uppercase paragraph — used for location/conclusão titles. */
-function sectionTitleParagraph(text: string) {
+/**
+ * Left-aligned bold uppercase section title (e.g. "AVENIDA PRESIDENTE VARGAS",
+ * "CONCLUSÃO"). Matches per-location and conclusão header rows.
+ */
+function sectionTitleParagraph(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.LEFT,
-    children: [bold(text, { size: 22, allCaps: true })],
-    spacing: { before: 80, after: 80 },
+    spacing: { after: 60, line: 276, lineRule: LineRuleType.AUTO },
+    children: [run(text, { bold: true, size: SIZE_TITLE, color: TITLE_COLOR, allCaps: true })],
   });
 }
 
-/** A plain left-aligned paragraph. */
-function bodyParagraph(text: string) {
+/**
+ * Justified body paragraph at 10pt Arial, line spacing 1.15, 6pt after.
+ */
+function bodyParagraph(text: string): Paragraph {
   return new Paragraph({
     alignment: AlignmentType.JUSTIFIED,
-    children: [plain(text)],
-    spacing: { after: 120 },
+    spacing: { after: 120, line: 276, lineRule: LineRuleType.AUTO },
+    children: [run(text)],
   });
 }
 
-/** A bullet list item (uses the docx "bullet" numbering style). */
-function bulletParagraph(text: string) {
+/**
+ * Pseudo-bullet paragraph — matches the reference exactly: plain paragraph
+ * prefixed with "• " and indented 360 EMU left. No real Word numbering.
+ */
+function bulletParagraph(text: string): Paragraph {
   return new Paragraph({
-    bullet: { level: 0 },
-    children: [plain(text)],
-    spacing: { after: 60 },
-    indent: { left: 540 },
+    indent: { left: 360, firstLine: 0 },
+    spacing: { after: 40, line: 276, lineRule: LineRuleType.AUTO },
+    children: [run(`• ${text}`)],
   });
 }
 
-/** Make a single full-width borderless table cell containing the given paragraphs. */
-function cell(children: Paragraph[]) {
+/** Wrap paragraphs in a single full-width table cell with full borders. */
+function cell(children: Paragraph[]): TableCell {
   return new TableCell({
     children,
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: NO_BORDERS,
+    borders: FULL_CELL_BORDERS,
     margins: { top: 100, bottom: 100, left: 150, right: 150 },
   });
 }
 
-/** Wrap a cell as a single-cell row. */
-function row(children: Paragraph[]) {
-  return new TableRow({
-    children: [cell(children)],
-    height: { value: 0, rule: HeightRule.AUTO },
-  });
+/** Single-cell table row. */
+function row(children: Paragraph[]): TableRow {
+  return new TableRow({ children: [cell(children)] });
 }
 
 // ──────────────────────────────────────────────────────────────────
 // Section builders
 // ──────────────────────────────────────────────────────────────────
 
-function buildTitleRow() {
-  return row([
-    titleParagraph(REPORT_TITLE_LINE_1),
-    titleParagraph(REPORT_TITLE_LINE_2),
-  ]);
-}
-
-function buildAreaTitleRow(areaTitle: string) {
-  return row([titleParagraph(areaTitle.toUpperCase())]);
-}
-
-function buildIntroRow(intro?: string) {
-  return row([bodyParagraph(intro ?? DEFAULT_INTRO)]);
+function buildHeaderRows(areaTitle: string, intro?: string): TableRow[] {
+  return [
+    row([
+      titleParagraph(REPORT_TITLE_LINE_1),
+      titleParagraph(REPORT_TITLE_LINE_2),
+    ]),
+    row([titleParagraph(areaTitle.toUpperCase())]),
+    row([bodyParagraph(intro ?? DEFAULT_INTRO)]),
+  ];
 }
 
 function buildObservationsBlock(obs: RaaObservations): Paragraph[] {
-  const details: Array<keyof RaaObservations> = [
+  const keys: Array<keyof RaaObservations> = [
     "retencaoFluxo",
     "baixaVisibilidade",
     "obstaculos",
@@ -142,20 +181,23 @@ function buildObservationsBlock(obs: RaaObservations): Paragraph[] {
   ];
   return [
     bodyParagraph(OBSERVATIONS_LEAD_IN),
-    ...details.map((key, i) =>
-      bulletParagraph(`${OBSERVATION_PREFIXES[i]} — ${obs[key]}`),
-    ),
+    ...keys.map((key, i) => {
+      const detail = obs[key];
+      // Last bullet ends with "." in source; others with ";"
+      const terminator = i === keys.length - 1 ? "." : ";";
+      return bulletParagraph(`${OBSERVATION_PREFIXES[i]} — ${detail}${terminator}`);
+    }),
   ];
 }
 
 function buildLocationRows(loc: RaaLocation): TableRow[] {
-  const dinamicaText = loc.dinamicaCriminal ?? DEFAULT_DINAMICA_CRIMINAL;
+  const dinamica = loc.dinamicaCriminal ?? DEFAULT_DINAMICA_CRIMINAL;
   return [
     row([sectionTitleParagraph(loc.title)]),
     row([
       bodyParagraph(loc.context),
       ...buildObservationsBlock(loc.observations),
-      bodyParagraph(dinamicaText),
+      bodyParagraph(dinamica),
     ]),
   ];
 }
@@ -163,18 +205,17 @@ function buildLocationRows(loc: RaaLocation): TableRow[] {
 function buildConclusionRows(raa: Raa): TableRow[] {
   const c = raa.conclusion;
   const synthesisWithLeadIn = c.synthesis.trimEnd().endsWith(":")
-    ? c.synthesis // user already added the colon lead-in
+    ? c.synthesis
     : `${c.synthesis} ${CONCLUSAO_ACTIONS_LEAD_IN}`;
+
+  const actionsParas = c.actions.map((a, i) => {
+    const terminator = i === c.actions.length - 1 ? "." : ";";
+    return bulletParagraph(`${a.category} — ${a.detail}${terminator}`);
+  });
 
   return [
     row([sectionTitleParagraph(CONCLUSAO_TITLE)]),
-    row([
-      bodyParagraph(synthesisWithLeadIn),
-      ...c.actions.map((a) =>
-        bulletParagraph(`${a.category} — ${a.detail}`),
-      ),
-      bodyParagraph(c.closingTimePattern),
-    ]),
+    row([bodyParagraph(synthesisWithLeadIn), ...actionsParas, bodyParagraph(c.closingTimePattern)]),
   ];
 }
 
@@ -182,29 +223,13 @@ function buildConclusionRows(raa: Raa): TableRow[] {
 // Public API
 // ──────────────────────────────────────────────────────────────────
 
-/**
- * Build a `docx` Document from a structured RAA.
- *
- * @example
- *   const doc = buildRaaDoc(raa);
- *   const buf = await Packer.toBuffer(doc);
- *   // → write `buf` to response stream
- */
+/** Build a `docx` Document from a structured RAA. */
 export function buildRaaDoc(raa: Raa): Document {
   const table = new Table({
     width: { size: 100, type: WidthType.PERCENTAGE },
-    borders: {
-      top: NO_BORDERS.top,
-      bottom: NO_BORDERS.bottom,
-      left: NO_BORDERS.left,
-      right: NO_BORDERS.right,
-      insideHorizontal: { style: BorderStyle.SINGLE, size: 4, color: "999999" },
-      insideVertical: NO_BORDERS.left,
-    },
+    borders: FULL_TABLE_BORDERS,
     rows: [
-      buildTitleRow(),
-      buildAreaTitleRow(raa.areaTitle),
-      buildIntroRow(raa.intro),
+      ...buildHeaderRows(raa.areaTitle, raa.intro),
       ...raa.locations.flatMap(buildLocationRows),
       ...buildConclusionRows(raa),
     ],
@@ -214,15 +239,24 @@ export function buildRaaDoc(raa: Raa): Document {
     creator: "CompStat Rio — Claude Impact Lab",
     title: `RAA ${raa.areaTitle}`,
     description: `Relatório Analítico de Área — polygon ${raa.polygonFid}`,
+    styles: {
+      default: {
+        document: { run: { font: FONT, size: SIZE_BODY } },
+      },
+    },
     sections: [
       {
         properties: {
-          page: { margin: { top: 720, bottom: 720, left: 720, right: 720 } },
+          page: {
+            size: { width: 11906, height: 16838 }, // A4
+            margin: { top: 1134, bottom: 1134, left: 1134, right: 1134, header: 708, footer: 708 },
+          },
         },
         children: [
           new Paragraph({
-            children: [bold(REPORT_TOP_LABEL, { size: 22 })],
-            spacing: { after: 200 },
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 200, line: 276, lineRule: LineRuleType.AUTO },
+            children: [run(REPORT_TOP_LABEL, { bold: true, size: SIZE_TITLE, color: TITLE_COLOR })],
           }),
           table,
         ],
