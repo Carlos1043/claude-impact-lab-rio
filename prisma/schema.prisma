@@ -1,5 +1,8 @@
-// Prisma schema — SQLite via driver adapter (better-sqlite3)
+// CompStat Rio — Prisma schema
+// Mirrors db/schema.sql 1:1. Connection URL lives in prisma.config.ts (Prisma 7+).
 // Docs: https://pris.ly/d/prisma-schema
+//
+// Geometry columns are WKT TEXT — parse with `wellknown` or `wellknown-wkt` on the JS side.
 
 generator client {
   provider = "prisma-client-js"
@@ -7,4 +10,185 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Polygon — 8 Força Municipal priority areas
+// ──────────────────────────────────────────────────────────────────
+model Polygon {
+  fid          Int     @id
+  nome         String  @unique
+  centroidLon  Float
+  centroidLat  Float
+  areaM2       Float
+  geometryWkt  String
+
+  cameras      Camera[]
+  occurrences  Occurrence[]
+  tips         Tip[]
+  factors      UrbanFactor[]
+  relints      Relint[]
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Camera — 985 camera install points
+// ──────────────────────────────────────────────────────────────────
+model Camera {
+  id          String  @id
+  nomeArea    String
+  trecho      Int?
+  lon         Float
+  lat         Float
+  polygonFid  Int?
+
+  polygon     Polygon? @relation(fields: [polygonFid], references: [fid])
+
+  @@index([polygonFid])
+  @@index([nomeArea])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Occurrence — 115k police occurrences (furto + roubo, 2020-2024)
+// ──────────────────────────────────────────────────────────────────
+model Occurrence {
+  id             String  @id
+  ano            Int
+  mes            Int
+  diaSemana      String?
+  hora           String?
+  dataRaw        String?
+  delito         Int
+  descDelito     String
+  lon            Float
+  lat            Float
+  aisp           Int
+  risp           Int
+  locf           String?
+  polygonFid     Int?
+  factionDomain  String?
+
+  polygon        Polygon? @relation(fields: [polygonFid], references: [fid])
+
+  @@index([polygonFid])
+  @@index([ano, mes])
+  @@index([descDelito])
+  @@index([aisp])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Tip — 18k unique Disque Denúncia tips (free text is `relato`)
+// ──────────────────────────────────────────────────────────────────
+model Tip {
+  numeroDenuncia    String  @id
+  idDenuncia        Int?
+  dataDenuncia      String?
+  dataDifusao       String?
+  bairro            String?
+  logradouro        String?
+  numero            String?
+  complemento       String?
+  cep               String?
+  lat               Float?
+  lon               Float?
+  classe            String?
+  tipo              String?
+  assuntoPrincipal  Int?
+  statusDenuncia    String?
+  relato            String?
+  polygonFid        Int?
+  factionDomain     String?
+
+  polygon           Polygon? @relation(fields: [polygonFid], references: [fid])
+
+  @@index([polygonFid])
+  @@index([classe])
+  @@index([tipo])
+  @@index([bairro])
+  @@index([dataDenuncia])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// UrbanFactor — 2,085 field-recorded crime-enabling factors
+// ──────────────────────────────────────────────────────────────────
+model UrbanFactor {
+  id                    Int     @id
+  logradouro            String?
+  numeroPorta           String?
+  referencia            String?
+  lat                   Float?
+  lon                   Float?
+  observacao            String?
+  enderecoInformado     Int?
+  valido                Int?
+  bairroId              Int?
+  bairroNome            String?
+  subareaId             Int?
+  subareaNome           String?
+  tipoOcorrenciaId      Int?
+  tipoOcorrenciaDesc    String?
+  orgaoResponsavel      String?
+  ocorrenciaOrgaoNome   String?
+  codigoOcorrenciaOrgao Int?
+  polygonFid            Int?
+
+  polygon               Polygon? @relation(fields: [polygonFid], references: [fid])
+
+  @@index([polygonFid])
+  @@index([orgaoResponsavel])
+  @@index([subareaId])
+  @@index([tipoOcorrenciaDesc])
+  @@index([valido])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// FactionTerritory — Rio-bbox-filtered faction polygons (safety mask only)
+// ──────────────────────────────────────────────────────────────────
+model FactionTerritory {
+  id            Int     @id @default(autoincrement())
+  nome          String
+  dominio       String  // CV / Milícia / TCP / ADA
+  geometryWkt   String
+  centroidLat   Float?
+  centroidLon   Float?
+
+  @@index([dominio])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// HomelessCensus — Censo de Pessoas em Situação de Rua 2020/2022/2024
+// ──────────────────────────────────────────────────────────────────
+model HomelessCensus {
+  id        Int     @id @default(autoincrement())
+  ano       Int
+  bairro    String?
+  endereco  String?
+  lat       Float?
+  lon       Float?
+
+  @@index([ano])
+  @@index([bairro])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Relint — 8 existing intelligence reports (the output template)
+// ──────────────────────────────────────────────────────────────────
+model Relint {
+  id           String  @id
+  ano          Int
+  polygonFid   Int?
+  titulo       String
+  markdown     String
+
+  polygon      Polygon? @relation(fields: [polygonFid], references: [fid])
+
+  @@index([polygonFid])
+}
+
+// ──────────────────────────────────────────────────────────────────
+// Orgao — lookup table for responsible secretarias
+// ──────────────────────────────────────────────────────────────────
+model Orgao {
+  sigla          String  @id
+  nome           String
+  responsavelPor String?
 }
