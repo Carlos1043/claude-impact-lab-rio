@@ -1,0 +1,10 @@
+// Prisma schema — SQLite via driver adapter (better-sqlite3)
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
