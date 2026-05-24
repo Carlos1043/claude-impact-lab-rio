@@ -1,0 +1,113 @@
+/**
+ * Sample RAA modeled on the real `RI_017_2026_Presidente_Vargas_Campo_Santana.docx`.
+ * Used to:
+ *   - smoke-test the renderer (`pnpm tsx src/lib/raa/fixtures/pres-vargas.ts`)
+ *   - act as the default response of `/api/raa/[fid]/export` when no AI generator
+ *     is wired up yet
+ *
+ * When the LLM generator at `../generate.ts` is implemented, the output shape
+ * should match this fixture exactly.
+ */
+
+import type { Raa } from "../types";
+
+export const presVargasFixture: Raa = {
+  polygonFid: 20,
+  areaTitle: "PRESIDENTE VARGAS – CAMPO DE SANTANA – CENTRAL DO BRASIL – CINELÂNDIA",
+  // intro defaults to DEFAULT_INTRO
+  locations: [
+    {
+      title: "AVENIDA PRESIDENTE VARGAS",
+      context:
+        "A Avenida Presidente Vargas concentra intenso fluxo de pedestres e usuários do transporte público, favorecendo furtos e roubos de celulares em pontos de ônibus e calçadas. Com extensão de 4,5 km entre a Praça da República e o Cais do Porto, a via é a principal artéria do Centro e opera como rota de escape para criminosos após ações nas ruas adjacentes. O cruzamento com a Rua Uruguaiana (altura do nº 580) funciona como ponto de escoamento de produtos subtraídos para o Camelódromo da Uruguaiana, maior polo de receptação de celulares furtados do estado, conforme identificado em investigações da Polícia Civil. Em 2025, mais de 5.000 furtos foram registrados no Centro — alta de 36% em relação ao período anterior, segundo dados do Instituto de Segurança Pública.",
+      observations: {
+        retencaoFluxo:
+          "pontos de ônibus ao longo de toda a extensão da via",
+        baixaVisibilidade:
+          "trechos sob marquises, estruturas elevadas e passarelas",
+        obstaculos:
+          "ambulantes irregulares obstruindo calçadas e comprometendo visibilidade",
+        motosBicis:
+          "incluindo motocicletas com placas adulteradas identificadas no corredor",
+        rotasDispersao:
+          "vias transversais a cada quadra viabilizam fuga imediata",
+      },
+    },
+    {
+      title: "CAMPO DE SANTANA",
+      context:
+        "O Campo de Santana (Praça da República, s/n), tombado pelo INEPAC (1968) e pelo IPHAN (2012), apresenta vegetação densa e áreas abertas utilizadas para dispersão após delitos praticados nas vias adjacentes. Vistoria realizada pela Comissão de Assuntos Urbanos da Câmara Municipal em junho de 2025 constatou presença de população em situação de rua (PSR) em múltiplos pontos do parque, usuários de entorpecentes com abordagens agressivas a transeuntes, lixo acumulado em grande volume e falha grave na iluminação de setores internos.",
+      observations: {
+        retencaoFluxo:
+          "pedestres cruzando o parque entre os terminais de ônibus adjacentes",
+        baixaVisibilidade:
+          "setores internos sem iluminação e vegetação densa favorecendo abordagens noturnas",
+        obstaculos:
+          "bancos e estruturas de lazer ocupados por PSR como pontos fixos",
+        motosBicis:
+          "vias do entorno utilizadas como corredores de fuga após delitos",
+        rotasDispersao:
+          "saídas abertas para a Av. Presidente Vargas e Av. Marechal Floriano",
+      },
+    },
+    {
+      title: "CENTRAL DO BRASIL / CINELÂNDIA",
+      context:
+        "Os acessos à Central do Brasil (Praça Cristiano Ottoni, s/n) e à Cinelândia (Praça Floriano, s/n) apresentam grande circulação de pessoas, comércio irregular e múltiplas rotas de evasão utilizadas após a prática criminosa. A Central do Brasil integra os ramais da SuperVia, as Linhas 1 e 2 do MetrôRio e o VLT Carioca, com fluxo superior a 600 mil passageiros diários — o maior nó de transporte público do país. Na Cinelândia, os registros de furtos e roubos cresceram 46% no Carnaval de 2025, com a região respondendo por 33% das ocorrências da cidade (contra 26% no ano anterior).",
+      observations: {
+        retencaoFluxo:
+          "600 mil passageiros/dia na Central do Brasil, maior nó de transporte do país",
+        baixaVisibilidade:
+          "corredores internos da estação e entorno da Praça Floriano no período noturno",
+        obstaculos:
+          "comércio irregular nos acessos criando pontos cegos para a fiscalização",
+        motosBicis:
+          "VLT e bicicletas utilizados como rotas de fuga após a prática criminosa",
+        rotasDispersao:
+          "convergência de múltiplos modais viabiliza fuga em qualquer direção",
+      },
+    },
+  ],
+  conclusion: {
+    synthesis:
+      "A área analisada apresenta fatores urbanos e territoriais que favorecem delitos oportunistas, especialmente furtos e roubos de aparelhos celulares contra pedestres. A Av. Presidente Vargas opera como corredor de escoamento de produtos subtraídos para o Camelódromo da Uruguaiana; o Campo de Santana, em situação de abandono, funciona como ponto de apoio e dispersão; e a Central do Brasil concentra o maior fluxo de passageiros do país em um nó de múltiplas rotas de fuga — configurando o perímetro de maior complexidade operacional dentre os mapeados. O crescimento de 46% nos registros de furtos e roubos na Cinelândia no Carnaval de 2025 evidencia tendência de agravamento que demanda resposta imediata.",
+    actions: [
+      {
+        category: "reforço do patrulhamento preventivo",
+        detail:
+          "com missões dirigidas por horário e local, priorizando os acessos à Central do Brasil (07h–09h e 17h–20h) e a Praça Floriano no período noturno",
+        orgao: "GM-RIO",
+      },
+      {
+        category: "melhoria da iluminação pública",
+        detail:
+          "especialmente nos setores internos do Campo de Santana e no entorno da Praça Floriano",
+        orgao: "RioLuz",
+      },
+      {
+        category: "poda de vegetação",
+        detail:
+          "redução dos pontos de sombra no Campo de Santana que favorecem abordagens e permanência de PSR",
+        orgao: "COMLURB",
+      },
+      {
+        category: "fiscalização e ordenamento do comércio irregular",
+        detail:
+          "ações específicas no Camelódromo da Uruguaiana e nos acessos à Central do Brasil",
+        orgao: "SEOP",
+      },
+      {
+        category: "ações integradas de ordenamento urbano",
+        detail:
+          "coordenação permanente entre Força Municipal, PMERJ, PCERJ e SEOP, com operações abrangendo o eixo completo do perímetro",
+      },
+    ],
+    closingTimePattern:
+      "Os delitos tendem a ocorrer principalmente nos horários de pico de transporte público (07h–09h e 17h–20h) na Central do Brasil e Av. Presidente Vargas, e no período noturno na Cinelândia, com agravamento nos fins de semana e períodos de grande aglomeração como o Carnaval.",
+  },
+  meta: {
+    generatedAt: new Date().toISOString(),
+    weekIso: "2026-W21",
+    source: "fixture",
+  },
+};
