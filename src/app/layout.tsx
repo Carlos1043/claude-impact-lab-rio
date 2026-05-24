@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { SwrProvider } from "@/lib/cache/swr-provider";
 
 export const metadata: Metadata = {
-  title: "Claude Impact Lab Rio",
+  title: "CompStat Rio",
 };
 
 export const viewport: Viewport = {
@@ -16,8 +17,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="pt-BR">
+      <body>
+        <SwrProvider>{children}</SwrProvider>
+      </body>
     </html>
   );
 }
